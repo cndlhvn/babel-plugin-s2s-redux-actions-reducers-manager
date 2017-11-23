@@ -1,12 +1,18 @@
 import fs from 'fs'
 import globby from 'globby'
+import createFile from 'babel-file';
+import generate from 'babel-generator';
 
 module.exports = babel => {
   var t = babel.types;
+  let variableDeclarators = []
 
   return {
     name: "s2s-redux-actions-reducers-manager",
     visitor: {
+      VariableDeclarator(path,state){
+        variableDeclarators.push(path.node.id.name)
+      },
       Program: {
         enter(path, state) {
           const { input, output } = state.opts
@@ -35,6 +41,60 @@ module.exports = babel => {
               }
             }
           )
+        },
+
+        exit(path, state){
+          const { output } = state.opts
+
+          const inputFilePath = state.file.opts.filename
+          const inputFileName = inputFilePath.split("/").pop()
+
+          const outputDirPath = output.split("/").reverse().slice(1).reverse().join("/")
+          const outputFilePath = outputDirPath + "/" + inputFileName
+
+          let outputFile
+          let actionNameArray = []
+          let objectPropertyArray = []
+
+          fs.readFile(outputFilePath, (err, data) => {
+            const outputFileSrc = data.toString();
+            outputFile = createFile(outputFileSrc, {
+              filename: outputFilePath
+            })
+
+            outputFile.path.traverse({
+              MemberExpression(path){
+                if(path.node.object.name != "actions"){
+		              return
+                }
+                actionNameArray.push(path.node.property.name)
+              }
+            })
+
+            variableDeclarators.forEach((val,index,ar) => {
+              if (actionNameArray.indexOf(val) == -1){
+                outputFile.path.traverse({
+                  ObjectExpression(path){
+                    if(path.parent.type != "CallExpression"){
+                      return
+                    }
+                    path.node.properties.push(
+                      t.ObjectProperty(
+                        t.Identifier(val),
+                        t.Identifier(val),
+                        false,true
+                      )
+                    )
+                  }
+                })
+                const resultSrc = generate(outputFile.ast).code
+                fs.writeFile(outputFilePath, resultSrc, (err) => { if(err) {throw err} });
+              }
+            });
+
+            actionNameArray = []
+            variableDeclarators = []
+          })
         }
       }
     }
