@@ -92,6 +92,25 @@ module.exports = babel => {
               }
             });
 
+            if(actionNameArray.length > variableDeclarators.length){
+              actionNameArray.forEach((val,index,ar) => {
+                if (variableDeclarators.indexOf(val) == -1){
+                  outputFile.path.traverse({
+                    ObjectProperty(path){
+                      if(path.node.key.type != "MemberExpression"){
+                        return
+                      }
+                      if(path.node.key.property.name == val){
+                        path.remove()
+                      }
+                    }
+                  })
+                }
+              })
+              const resultSrc = generate(outputFile.ast).code
+              fs.writeFile(outputFilePath, resultSrc, (err) => { if (err) { throw err} })
+            }
+
             actionNameArray = []
             variableDeclarators = []
           })
