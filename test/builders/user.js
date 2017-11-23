@@ -1,0 +1,2 @@
+let getPokemonRequest
+let getCoinsRequest

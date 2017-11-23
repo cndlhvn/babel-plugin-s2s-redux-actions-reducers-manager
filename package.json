@@ -4,7 +4,9 @@
   "description": "manage redux actions reducers",
   "license": "MIT",
   "scripts": {
-    "build": "babel src --out-dir lib"
+    "build": "babel src --out-dir lib",
+    "test": "node test.js test/builders/user.js",
+    "all": "babel src --out-dir lib; node test.js test/builders/user.js"
   },
   "engines": {
     "node": ">=6"
